@@ -22,12 +22,6 @@ class ScraperConfig:
 
 
 @dataclass(frozen=True)
-class MLConfig:
-    model_name: str
-    batch_size: int
-
-
-@dataclass(frozen=True)
 class MarketConfig:
     interval_minutes: int
     trading_start_hour: int
@@ -41,7 +35,6 @@ class MarketConfig:
 class AppConfig:
     database: DatabaseConfig
     scraper: ScraperConfig
-    ml: MLConfig
     market: MarketConfig
 
 
@@ -59,21 +52,10 @@ def load_app_config() -> AppConfig:
             request_timeout=int(os.getenv("SCRAPER_REQUEST_TIMEOUT", "15")),
             max_articles_per_portal=int(os.getenv("SCRAPER_MAX_ARTICLES_PER_PORTAL", "20")),
         ),
-        ml=MLConfig(
-            model_name=os.getenv(
-                "SENTIMENT_MODEL",
-                "cardiffnlp/twitter-xlm-roberta-base-sentiment",
-            ),
-            batch_size=int(os.getenv("SENTIMENT_BATCH_SIZE", "16")),
-        ),
         market=MarketConfig(
             interval_minutes=int(os.getenv("MARKET_FETCH_INTERVAL_MINUTES", "2")),
             trading_start_hour=int(os.getenv("MARKET_TRADING_START_HOUR", "11")),
             trading_end_hour=int(os.getenv("MARKET_TRADING_END_HOUR", "15")),
-            # 0=Mon,1=Tue,2=Wed,3=Thu,4=Fri,5=Sat,6=Sun
-            # NEPSE moved to a Mon-Fri trading week (closed Sat/Sun) after
-            # Nepal's government adopted a two-day weekend - this matches
-            # the current schedule.
             trading_days=tuple(
                 int(d) for d in os.getenv("MARKET_TRADING_DAYS", "0,1,2,3,4").split(",")
             ),
