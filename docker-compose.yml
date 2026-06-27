@@ -12,7 +12,7 @@ services:
     volumes:
       - ./logs:/app/logs
     networks:
-      - wiki-network          # same network as your Wikipedia pipeline
+      - wiki-network          
     depends_on:
       - db
 
