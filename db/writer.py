@@ -10,12 +10,6 @@ VALUES %s
 ON CONFLICT (url) DO NOTHING
 """
 
-_UPDATE_SENTIMENT_SQL = """
-UPDATE nepse_news
-SET sentiment = %s, sentiment_score = %s, analyzed = TRUE
-WHERE id = %s
-"""
-
 _INSERT_MARKET_SQL = """
 INSERT INTO nepse_market_live
     (symbol, ltp, change_percent, open_price, high_price, low_price, volume, fetched_at)
@@ -48,34 +42,6 @@ def write_articles(articles: list[dict[str, Any]], db_config: DatabaseConfig) ->
                 inserted = cur.rowcount
         print(f"[DB] Inserted {inserted} new articles.")
         return inserted
-    finally:
-        conn.close()
-
-
-def fetch_unanalyzed(db_config: DatabaseConfig, limit: int = 200) -> list[dict[str, Any]]:
-    conn = get_connection(db_config)
-    try:
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT id, title, body FROM nepse_news WHERE analyzed = FALSE LIMIT %s",
-                (limit,),
-            )
-            rows = cur.fetchall()
-    finally:
-        conn.close()
-    return [{"id": r[0], "title": r[1] or "", "body": r[2] or ""} for r in rows]
-
-
-def update_sentiments(results: list[dict[str, Any]], db_config: DatabaseConfig) -> None:
-    if not results:
-        return
-    conn = get_connection(db_config)
-    try:
-        with conn:
-            with conn.cursor() as cur:
-                for r in results:
-                    cur.execute(_UPDATE_SENTIMENT_SQL, (r["sentiment"], r["score"], r["id"]))
-        print(f"[DB] Updated sentiment for {len(results)} articles.")
     finally:
         conn.close()
 
