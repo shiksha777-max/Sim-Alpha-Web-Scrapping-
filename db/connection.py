@@ -12,16 +12,11 @@ CREATE TABLE IF NOT EXISTS nepse_news (
     body            TEXT,
     category        TEXT,
     published_at    TIMESTAMP,
-    scraped_at      TIMESTAMP DEFAULT NOW(),
-    sentiment       TEXT,                    -- positive / neutral / negative
-    sentiment_score DOUBLE PRECISION,        -- confidence 0.0 to 1.0
-    analyzed        BOOLEAN DEFAULT FALSE
+    scraped_at      TIMESTAMP DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_nepse_news_scraped_at  ON nepse_news (scraped_at);
 CREATE INDEX IF NOT EXISTS idx_nepse_news_source       ON nepse_news (source);
-CREATE INDEX IF NOT EXISTS idx_nepse_news_analyzed     ON nepse_news (analyzed);
-CREATE INDEX IF NOT EXISTS idx_nepse_news_sentiment    ON nepse_news (sentiment);
 """
 
 _CREATE_MARKET_TABLE_SQL = """
