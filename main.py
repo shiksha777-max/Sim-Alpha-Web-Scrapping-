@@ -1,19 +1,13 @@
-"""
-FastAPI entry point.
-Starts the 30-minute scrape+analyze scheduler as a background daemon thread.
-"""
 from __future__ import annotations
-
 import os
 import threading
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Query
-
 from config import load_app_config
 from db import ensure_table_exists, get_connection
 
-app = FastAPI(title="Nepali News Sentiment API", version="1.0.0")
+app = FastAPI(title="NEPSE News Pipeline API", version="1.0.0")
 
 _scheduler_thread: threading.Thread | None = None
 _scheduler_lock = threading.Lock()
@@ -28,7 +22,7 @@ def _start_scheduler_once() -> None:
         from scraper.scheduler import start_scheduler
         config = load_app_config()
 
-        def _run() -> None:
+        def _run():
             try:
                 start_scheduler(config.scraper.interval_minutes)
             except Exception as e:
@@ -45,110 +39,59 @@ def on_startup() -> None:
     _start_scheduler_once()
 
 
-# ---------------------------------------------------------------------------
-# GET /sentiment-summary
-# ---------------------------------------------------------------------------
-
-_SUMMARY_SQL = """
-SELECT
-    source,
-    sentiment,
-    COUNT(*)                            AS count,
-    ROUND(AVG(sentiment_score)::numeric, 4) AS avg_score
-FROM news_articles
-WHERE analyzed = TRUE
-  AND scraped_at >= NOW() - INTERVAL '%s hours'
-GROUP BY source, sentiment
-ORDER BY source, sentiment;
-"""
-
-_CATEGORY_SQL = """
-SELECT
-    category,
-    sentiment,
-    COUNT(*) AS count
-FROM news_articles
-WHERE analyzed = TRUE
-  AND scraped_at >= NOW() - INTERVAL '%s hours'
-  AND category IS NOT NULL
-  AND category <> ''
-GROUP BY category, sentiment
-ORDER BY category, count DESC;
-"""
-
-_TOTAL_SQL = """
-SELECT
-    sentiment,
-    COUNT(*) AS count
-FROM news_articles
-WHERE analyzed = TRUE
-  AND scraped_at >= NOW() - INTERVAL '%s hours'
-GROUP BY sentiment;
-"""
-
-
-@app.get("/sentiment-summary")
-def get_sentiment_summary(
+@app.get("/articles")
+def get_articles(
     hours: int = Query(default=24, ge=1, le=720, description="Look-back window in hours"),
+    tier: str = Query(default="all", description="Filter by portal tier: all / finance / general"),
+    limit: int = Query(default=50, ge=1, le=500),
 ) -> dict[str, Any]:
     """
-    Returns sentiment breakdown (positive / neutral / negative) for the last N hours.
-    Grouped by source portal and category.
+    Returns recently scraped articles from all 20 portals.
     """
     config = load_app_config()
+
+    tier_filter = ""
+    if tier in ("finance", "general"):
+        tier_filter = f"AND portal_tier = '{tier}'"
+
+    sql = f"""
+        SELECT source, portal_tier, title, category, url, scraped_at
+        FROM nepse_news
+        WHERE scraped_at >= NOW() - INTERVAL '{hours} hours'
+          {tier_filter}
+        ORDER BY scraped_at DESC
+        LIMIT {limit}
+    """
+
     try:
         conn = get_connection(config.database)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"DB connection failed: {e}") from e
+        raise HTTPException(status_code=500, detail=f"DB error: {e}") from e
 
     try:
         with conn.cursor() as cur:
-            # Overall totals
-            cur.execute(_TOTAL_SQL % hours)
-            total_rows = cur.fetchall()
-            overall = {row[0]: int(row[1]) for row in total_rows}
-
-            # Per-source breakdown
-            cur.execute(_SUMMARY_SQL % hours)
-            source_rows = cur.fetchall()
-
-            # Per-category breakdown
-            cur.execute(_CATEGORY_SQL % hours)
-            category_rows = cur.fetchall()
+            cur.execute(sql)
+            rows = cur.fetchall()
     finally:
         conn.close()
 
-    # Build per-source dict
-    by_source: dict[str, dict[str, Any]] = {}
-    for source, sentiment, count, avg_score in source_rows:
-        if source not in by_source:
-            by_source[source] = {"source": source, "positive": 0, "neutral": 0, "negative": 0, "avg_scores": {}}
-        by_source[source][sentiment] = int(count)
-        by_source[source]["avg_scores"][sentiment] = float(avg_score or 0)
-
-    # Build per-category dict
-    by_category: dict[str, dict[str, Any]] = {}
-    for category, sentiment, count in category_rows:
-        if category not in by_category:
-            by_category[category] = {"category": category, "positive": 0, "neutral": 0, "negative": 0}
-        by_category[category][sentiment] = int(count)
-
-    total_articles = sum(overall.values())
+    articles = [
+        {
+            "source": r[0],
+            "portal_tier": r[1],
+            "title": r[2],
+            "category": r[3],
+            "url": r[4],
+            "scraped_at": str(r[5]),
+        }
+        for r in rows
+    ]
 
     return {
         "window_hours": hours,
-        "total_articles_analyzed": total_articles,
-        "overall": {
-            "positive": overall.get("positive", 0),
-            "neutral": overall.get("neutral", 0),
-            "negative": overall.get("negative", 0),
-        },
-        "by_source": list(by_source.values()),
-        "by_category": sorted(
-            by_category.values(),
-            key=lambda x: x["positive"] + x["neutral"] + x["negative"],
-            reverse=True,
-        )[:20],
+        "portal_tier_filter": tier,
+        "total": len(articles),
+        "articles": articles,
     }
 
 
