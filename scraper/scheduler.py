@@ -1,8 +1,7 @@
 from apscheduler.schedulers.blocking import BlockingScheduler
 
 from config import load_app_config
-from db import ensure_table_exists, fetch_unanalyzed, update_sentiments, write_articles, write_market_snapshot
-from ml.sentiment import SentimentAnalyzer
+from db import write_articles, write_market_snapshot
 from market import fetch_live_market, is_trading_window
 from scraper.scrapers import scrape_all
 
@@ -11,29 +10,16 @@ def run_pipeline() -> None:
     config = load_app_config()
 
     print("\n" + "=" * 60)
-    print("[Pipeline] Starting scrape + sentiment run...")
+    print("[Pipeline] Starting scrape run...")
     print("=" * 60)
 
-    # Step 1: Scrape all 20 portals
     articles = scrape_all(
         timeout=config.scraper.request_timeout,
         max_articles_per_portal=config.scraper.max_articles_per_portal,
     )
 
-    # Step 2: Save raw articles to DB
-    write_articles(articles, config.database)
-
-    # Step 3: Fetch unanalyzed and run sentiment
-    unanalyzed = fetch_unanalyzed(config.database, limit=300)
-    if not unanalyzed:
-        print("[Pipeline] No new articles to analyze.")
-        return
-
-    analyzer = SentimentAnalyzer(config.ml.model_name, batch_size=config.ml.batch_size)
-    results = analyzer.analyze(unanalyzed)
-    update_sentiments(results, config.database)
-
-    print(f"[Pipeline] Run complete. Analyzed {len(results)} articles.")
+    inserted = write_articles(articles, config.database)
+    print(f"[Pipeline] Run complete. Scraped {len(articles)} articles, stored {inserted} new.")
 
 
 def run_market_pipeline() -> None:
