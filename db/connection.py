@@ -2,11 +2,11 @@ import time
 import psycopg2
 from config import DatabaseConfig
 
-_CREATE_TABLE_SQL = """
+_CREATE_TABLES_SQL = """
 CREATE TABLE IF NOT EXISTS nepse_news (
     id              SERIAL PRIMARY KEY,
     source          TEXT NOT NULL,
-    portal_tier     TEXT NOT NULL,           -- 'finance' or 'general'
+    portal_tier     TEXT NOT NULL,
     url             TEXT UNIQUE NOT NULL,
     title           TEXT,
     body            TEXT,
@@ -15,25 +15,21 @@ CREATE TABLE IF NOT EXISTS nepse_news (
     scraped_at      TIMESTAMP DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_nepse_news_scraped_at  ON nepse_news (scraped_at);
-CREATE INDEX IF NOT EXISTS idx_nepse_news_source       ON nepse_news (source);
-"""
+CREATE INDEX IF NOT EXISTS idx_nepse_news_scraped_at ON nepse_news (scraped_at);
+CREATE INDEX IF NOT EXISTS idx_nepse_news_source     ON nepse_news (source);
+CREATE INDEX IF NOT EXISTS idx_nepse_news_tier       ON nepse_news (portal_tier);
 
-_CREATE_MARKET_TABLE_SQL = """
-CREATE TABLE IF NOT EXISTS nepse_market_live (
+CREATE TABLE IF NOT EXISTS nepse_index (
     id              SERIAL PRIMARY KEY,
-    symbol          TEXT NOT NULL,
-    ltp             DOUBLE PRECISION,        -- last traded price
-    change_percent  DOUBLE PRECISION,
-    open_price      DOUBLE PRECISION,
-    high_price      DOUBLE PRECISION,
-    low_price       DOUBLE PRECISION,
-    volume          BIGINT,
-    fetched_at      TIMESTAMP DEFAULT NOW()
+    index_name      TEXT NOT NULL,
+    value           DOUBLE PRECISION,
+    change          DOUBLE PRECISION,
+    percent_change  DOUBLE PRECISION,
+    scraped_at      TIMESTAMP DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_market_live_symbol      ON nepse_market_live (symbol);
-CREATE INDEX IF NOT EXISTS idx_market_live_fetched_at  ON nepse_market_live (fetched_at);
+CREATE INDEX IF NOT EXISTS idx_nepse_index_scraped_at  ON nepse_index (scraped_at);
+CREATE INDEX IF NOT EXISTS idx_nepse_index_name        ON nepse_index (index_name);
 """
 
 
@@ -53,10 +49,9 @@ def ensure_table_exists(db_config: DatabaseConfig, max_retries: int = 12, retry_
             conn = get_connection(db_config)
             with conn:
                 with conn.cursor() as cur:
-                    cur.execute(_CREATE_TABLE_SQL)
-                    cur.execute(_CREATE_MARKET_TABLE_SQL)
+                    cur.execute(_CREATE_TABLES_SQL)
             conn.close()
-            print("[DB] nepse_news + nepse_market_live tables ready.")
+            print("[DB] Tables ready: nepse_news, nepse_index.")
             return
         except Exception as e:
             if attempt == max_retries:
