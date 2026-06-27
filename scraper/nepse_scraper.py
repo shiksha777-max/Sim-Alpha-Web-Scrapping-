@@ -4,7 +4,8 @@ Scrapes from merolagani.com:
   - Main NEPSE index
   - Selected sector indices (Banking, Hydropower, Finance, etc.)
 
-Market hours: Sunday to Thursday, 11:00 AM to 3:00 PM NST
+
+ Market hours: Monday to Friday, 11:00 AM to 3:00 PM NST
 """
 from __future__ import annotations
 
