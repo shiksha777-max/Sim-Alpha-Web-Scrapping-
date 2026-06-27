@@ -188,7 +188,4 @@ Returns `{"status": "ok"}` if the pipeline is running.
 
 ---
 
-## Authors
 
-Shiksha Bhattarai
-Kathmandu University
