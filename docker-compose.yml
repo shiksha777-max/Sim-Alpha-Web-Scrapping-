@@ -1,0 +1,39 @@
+version: "3.8"
+
+services:
+  nepse-news-api:
+    build: .
+    container_name: nepse-news-api
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - wiki-network          # same network as your Wikipedia pipeline
+    depends_on:
+      - db
+
+  db:
+    image: postgres:15
+    container_name: postgres-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-wikipedia}
+      POSTGRES_USER: ${POSTGRES_USER:-superset}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-superset_pass}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - wiki-network
+
+volumes:
+  postgres_data:
+
+networks:
+  wiki-network:
+    driver: bridge
