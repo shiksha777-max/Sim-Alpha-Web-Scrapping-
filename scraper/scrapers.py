@@ -169,7 +169,7 @@ def scrape_merolagani(timeout=15, max_articles=20):
 def scrape_sharesansar(timeout=15, max_articles=20):
     return _generic_scraper(
         source="sharesansar", tier="finance",
-        base_url="https://www.sharesansar.com/news",
+        base_url="https://www.sharesansar.com",
         link_pattern=r"sharesansar\.com/newsdetail/",
         title_sel="h1.newsdetail-header, h1",
         body_sel="div.newsdetail-content p",
@@ -182,7 +182,7 @@ def scrape_sharesansar(timeout=15, max_articles=20):
 def scrape_nepsealpha(timeout=15, max_articles=20):
     return _generic_scraper(
         source="nepsealpha", tier="finance",
-        base_url="https://nepsealpha.com/nepse-news",
+        base_url="https://nepsealpha.com/news",
         link_pattern=r"nepsealpha\.com/nepse-news/\d+",
         title_sel="h1.news-title, h1",
         body_sel="div.news-content p",
@@ -234,7 +234,7 @@ def scrape_karobardaily(timeout=15, max_articles=20):
 def scrape_arthikabhiyan(timeout=15, max_articles=20):
     return _generic_scraper(
         source="arthikabhiyan", tier="finance",
-        base_url="https://www.arthikabhiyan.com",
+        base_url="https://arthikabhiyan.com",
         link_pattern=r"arthikabhiyan\.com/\d{4}/\d{2}/.+",
         title_sel="h1.entry-title, h1",
         body_sel="div.entry-content p",
@@ -260,7 +260,7 @@ def scrape_biznessnews(timeout=15, max_articles=20):
 def scrape_stocknepali(timeout=15, max_articles=20):
     return _generic_scraper(
         source="stocknepali", tier="finance",
-        base_url="https://stocknepali.com",
+        base_url="https://www.stocknepali.com",
         link_pattern=r"stocknepali\.com/\d{4}/\d{2}/.+",
         title_sel="h1.entry-title, h1",
         body_sel="div.entry-content p",
