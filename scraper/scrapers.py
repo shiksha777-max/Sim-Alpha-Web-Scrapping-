@@ -50,6 +50,7 @@ def _get(url: str, timeout: int = 15) -> BeautifulSoup | None:
     try:
         resp = requests.get(url, headers=_HEADERS, timeout=timeout)
         resp.raise_for_status()
+        resp.encoding = "utf-8"
         return BeautifulSoup(resp.text, "html.parser")
     except Exception as e:
         print(f"[Scraper] Failed to fetch {url}: {e}")
